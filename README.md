@@ -26,6 +26,7 @@ Quando você gerar a planilha do conjunto vai aparecer o ID idsConjuntos, e voc�
 
 
 tipoRelatorio: 1 igual a Relatorio Geral
+
 tipoRelatorio: 2 igual a Relatorio Geração de Referencia
 
 
