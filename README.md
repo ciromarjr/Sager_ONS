@@ -22,7 +22,10 @@ Você abre o sistema do Sager do ONS - Relatorio Geral, você vai abrir o modo i
 
 ![image](https://github.com/user-attachments/assets/2285f643-3088-4ddb-bfaf-7b3710325619)
 
+Quando você gerar a planilha do conjunto vai aparecer o ID idsConjuntos, e você precisa alimentar no codigo
 
 
 tipoRelatorio: 1 igual a Relatorio Geral
 tipoRelatorio: 2 igual a Relatorio Geração de Referencia
+
+
