@@ -1,40 +1,23 @@
-#Sager_ONS
+# 🚀 Sager_ONS  
 
-Sistema para baixar as planilhas do SAGER ONS - Não Oficial
-(O ONS ainda está desenvolvendo uma API oficial para essa funcionalidade.)
+**Sistema para baixar as planilhas do SAGER ONS - (Não Oficial)**  
+📢 *O ONS ainda está desenvolvendo uma API oficial para essa funcionalidade.*  
 
-📌 Descrição
-Este sistema permite o download automatizado das planilhas do SAGER ONS, extraindo os dados diretamente do sistema do ONS. Como a API oficial ainda está em desenvolvimento, o processo requer a obtenção manual dos IDs dos conjuntos para gerar os relatórios desejados.
+## 📌 Sobre o projeto  
 
-🚀 Como Usar
-1️⃣ Configuração Inicial
-Obtenha seu ID de conjunto:
+O **Sager_ONS** é um sistema automatizado para baixar planilhas do SAGER ONS. Ele facilita a extração de dados sem a necessidade de interação manual, útil para análises e automação de processos.  
 
-Acesse o sistema SAGER ONS - Relatório Geral
+## ⚙️ Como funciona  
 
-Abra o modo Inspecionar do navegador (F12 → Aba "Rede" ou "Network")
+1. Acesse o **SAGER ONS - Relatório Geral** no site oficial.  
+2. Abra o **modo inspecionar** do navegador (Aba "Redes" ou "Network").  
+3. Baixe manualmente uma planilha e identifique o **ID dos conjuntos de dados**.  
+4. Configure o arquivo `.env` com suas credenciais:  
 
-Baixe uma planilha manualmente e identifique o ID dos conjuntos (idsConjuntos) que será necessário no código
+   ```ini
+   EMAIL=seu_email_aqui
+   SENHA=sua_senha_aqui
 
-Configuração do arquivo .env
-
-Adicione seu e-mail e senha de acesso ao ONS no arquivo .env:
-
-ini
-Copiar
-Editar
-EMAIL=seuemail@exemplo.com
-SENHA=suasenha
-2️⃣ Executando o Sistema
-Após configurar o .env, execute o sistema e forneça os IDs dos conjuntos obtidos anteriormente.
-
-3️⃣ Tipos de Relatório
-tipoRelatorio: 1 → Relatório Geral
-
-tipoRelatorio: 2 → Relatório de Geração de Referência
-
-🖼 Exemplos
-Aqui estão algumas imagens demonstrando a extração dos IDs e o funcionamento do sistema:
 
 
 
