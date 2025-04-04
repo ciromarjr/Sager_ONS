@@ -70,9 +70,6 @@ Aqui estão algumas imagens demonstrando a extração dos IDs e o funcionamento 
 Quando você gerar a planilha do conjunto vai aparecer o ID idsConjuntos, e você precisa alimentar no codigo
 
 
-tipoRelatorio: 1 igual a Relatorio Geral
-
-tipoRelatorio: 2 igual a Relatorio Geração de Referencia
 
 
 
