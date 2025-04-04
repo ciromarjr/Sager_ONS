@@ -17,6 +17,36 @@ O **Sager_ONS** é um sistema automatizado para baixar planilhas do SAGER ONS. E
    ```ini
    EMAIL=seu_email_aqui
    SENHA=sua_senha_aqui
+    ```
+   Escolha o tipo de relatório (modifique no código conforme necessário):
+
+tipoRelatorio: 1 → Relatório Geral
+
+tipoRelatorio: 2 → Relatório de Geração de Referência
+
+Execute o script para baixar os arquivos automaticamente.
+
+🛠️ Tecnologias utilizadas
+Python
+
+Requests (para requisições HTTP)
+
+Pandas (para manipulação de dados)
+
+Dotenv (para gerenciar variáveis de ambiente)
+
+📌 Requisitos
+Antes de rodar o projeto, instale as dependências:
+
+ ```ini
+pip install -r requirements.txt
+ ```
+▶️ Como executar
+ ```ini
+python main.py
+ ```
+🖼 Exemplos
+Aqui estão algumas imagens demonstrando a extração dos IDs e o funcionamento do sistema:
 
 
 
