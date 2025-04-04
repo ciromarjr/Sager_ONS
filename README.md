@@ -67,8 +67,9 @@ Aqui estão algumas imagens demonstrando a extração dos IDs e o funcionamento 
 
 ![image](https://github.com/user-attachments/assets/2285f643-3088-4ddb-bfaf-7b3710325619)
 
-Quando você gerar a planilha do conjunto vai aparecer o ID idsConjuntos, e você precisa alimentar no codigo
+Quando você gerar a planilha do conjunto vai aparecer o ID idsConjuntos, e você precisa alimentar no codigo, tanto ID´s quando o local de salvar as planilhas
 
+![image](https://github.com/user-attachments/assets/62472662-03f1-4f94-beea-709885367e77)
 
 
 
