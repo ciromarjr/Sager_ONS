@@ -4,6 +4,8 @@ Sistema para Baixar as planilhas do SAGER ONS - Não Oficial (ONS ainda está em
 Para poder conseguir baixar as planilha é necessario pegar o id dos conjuntos:
 Você abre o sistema do Sager do ONS - Relatorio Geral, você vai abrir o modo inspecionar (redes) e vai baixar as planilhas e visualizar 
 
+configure o arquivo .env com seu email e senha (Acesso ao ONS)
+
 
 
 ![image](https://github.com/user-attachments/assets/a0ae5e99-8567-46eb-b01a-fc1055022603)
