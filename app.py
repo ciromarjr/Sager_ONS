@@ -1,178 +1,257 @@
 #Codigo baixar planilhas
 # -*- encoding: utf-8 -*-
-import requests
-import pandas as pd
+from datetime import datetime
 import os
+import requests
 import time
-import getpass
-from dotenv import load_dotenv
-from datetime import datetime, timedelta
+from requests.exceptions import RequestException
+import openpyxl
 
-# Carregar variáveis do arquivo .env
-load_dotenv()
-
-# Obtém a data do dia anterior
-ontem = datetime.now() - timedelta(days=1)
-data_inicial = ontem.strftime("%Y-%m-%dT00:00:00.000Z")
-data_final = ontem.strftime("%Y-%m-%dT23:59:59.000Z")
-data_arquivo = ontem.strftime("%m%d")  # Formato MMDD para nome do arquivo
-ano_atual = ontem.strftime("%Y")  # Ano atual
-
-# Mapeamento das subestações para tags pegar os nomes do conjunto do SINapse e adicionar as tag´s da subestação
-SE_TAG_MAP = {
-    'Conj. xxxx': 'xxxx',
-    'Conj. xxxx2': 'xxxx2',
+# Configurações da API
+auth_url = "https://pops.ons.org.br/ons.pop.federation/oauth2/token"
+exportar_url = "https://integra.ons.org.br/api/sager/renovaveis/api/RelatorioApuracaoUsinasRenovaveis/exportarRelatorio"
+api_auth_payload = {
+    "grant_type": "password",
+    "client_id": "SAGER",
+    "username": "",  # Substitua pelo seu usuário
+    "password": ""  # Substitua pela sua senha
 }
 
-class SinapseONS:
-    def __init__(self):
-        self.ons_user = os.getenv("ONS_USER")
-        self.ons_pass = os.getenv("ONS_PASS")
-        self.session = requests.Session()
-        self.access_token = None
-        self.usuario_sistema = getpass.getuser()  # Obtém o nome do usuário do sistema
+# Dicionários fornecidos
+tipoRelatorio = {
+    1: "Relatório Geral",
+    2: "Relatório Geração de Referência"
+}
 
-    def autenticar(self):
-        """Autentica no portal ONS e obtém o access token mantendo a sessão ativa."""
-        login_url = "https://pops.ons.org.br/ons.pop.federation/?ReturnUrl=https://sinapse.ons.org.br/autenticacao/login"
+# Mapeamento dos IDs para os números de série que serão usados no nome dos arquivos
+numero_serie = {
+    00: 00,   # Codigo do Sager e do numero do arquivo da planilha
+    
+}
 
-        with self.session as s:
-            response = s.get(login_url)
+idsConjuntos = {
+    00: "Conjunto", # Codigo do Sager e do conjunto
+    
+}
 
-            headers = {
-                'Origin': 'https://pops.ons.org.br',
-                'Pragma': 'no-cache',
-                'Referer': login_url,
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
-            }
+usuario = os.getenv('USERNAME')  # Ou use os.getlogin()
+# Caminho base onde estão salvas as planilhas
+caminho2 = fr"C:\Users\{usuario}\Relatórios\SAGER"
+caminho1 = fr"C:\Users\{usuario}\Relatórios\SAGER"
 
-            data = {
-                'username': self.ons_user,
-                'password': self.ons_pass,
-                'submit.Signin': 'Entrar',
-                'CountLogin': '0',
-            }
+# Função para verificar qual caminho existe
+def verificar_caminho_existente(caminho1, caminho2):
+    if os.path.exists(caminho1):
+        return caminho1
+    elif os.path.exists(caminho2):
+        return caminho2
+    else:
+        return None
 
-            response = s.post(login_url, headers=headers, data=data)
-            
-            if response.status_code != 200:
-                print("❌ Erro ao autenticar: Verifique usuário e senha.")
-                return False
+# Verifica qual caminho existe
+caminho = verificar_caminho_existente(caminho1, caminho2)
 
-            print("✅ Autenticação realizada com sucesso.")
+if caminho is None:
+    print("Nenhum dos caminhos existe. Verifique os caminhos fornecidos.")
+else:
+    print(f"O caminho existente é: {caminho}")
 
-            # Obter token de acesso
-            token_url = "https://pops.ons.org.br/ons.pop.federation/oauth2/token"
-            headers = {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Origin': 'https://pops.ons.org.br',
-                'Referer': 'https://pops.ons.org.br/',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
-            }
-            data = {
-                'grant_type': 'password',
-                'client_id': 'SINAPSE',
-                'username': self.ons_user,
-                'password': self.ons_pass
-            }
 
-            response = s.post(token_url, headers=headers, data=data)
+# Função para obter o token de autenticação da API
+def get_api_token():
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Origin': 'https://apps18.ons.org.br'
+    }
+    response = requests.post(auth_url, data=api_auth_payload, headers=headers)
+    if response.status_code == 200:
+        auth_data = response.json()
+        return auth_data['access_token']
+    else:
+        print("Erro na autenticação da API:", response.status_code, response.text)
+        return None
 
-            if response.status_code == 200:
-                self.access_token = response.json()['access_token']
-                print(f"✅ Token obtido com sucesso: {self.access_token[:10]}...")
+# Função para determinar e criar as pastas base
+def criar_pastas_base():
+    ano_atual = datetime.now().year
+    base_dir = os.path.join(caminho, f"{ano_atual}_SAGER")
 
-                # Aguarda 5 segundos antes de fazer qualquer outra requisição
-                time.sleep(5)
-                return True
-            else:
-                print(f"❌ Erro ao obter token: {response.status_code} - {response.text}")
-                return False
+    # Verifica se as pastas principais existem, se não, as cria
+    relatorio_geral_dir = os.path.join(base_dir, "Relatório Geral")
+    relatorio_geracao_referencia_dir = os.path.join(base_dir, "Relatório Geração de Referência")
 
-    def criar_pasta_relatorio(self, subestacao, tipo_relatorio):
-        """Cria o diretório correto para armazenar os relatórios filtrados."""
-        base_path = os.path.join(
-            f"C:\\Users\\{self.usuario_sistema}\\",
-            #f"{subestacao}_SAGER",
-            #f"{ano_atual}_{subestacao}_SAGER",
-            #f"{ano_atual}-{tipo_relatorio}-SINapse"
-        )
-        os.makedirs(base_path, exist_ok=True)
-        return base_path
+    if not os.path.exists(relatorio_geral_dir):
+        os.makedirs(relatorio_geral_dir)
+    if not os.path.exists(relatorio_geracao_referencia_dir):
+        os.makedirs(relatorio_geracao_referencia_dir)
+    
+    return relatorio_geral_dir, relatorio_geracao_referencia_dir
 
-    def baixar_csv(self, url, nome, tipo_relatorio):
-        """Baixa um relatório da API do SINAPSE ONS e salva os dados separados por subestação."""
-        if not self.access_token:
-            print("Erro: Nenhum token disponível. Faça login primeiro.")
-            return None
+# Função para baixar o relatório e salvá-lo na pasta correta
+def baixar_relatorio(token, tipo_relatorio_id, conjunto_id, conjunto_nome, output_dir, ano):
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0',
+        'Origin': 'https://apps18.ons.org.br'
+    }
 
-        headers = {
-            'Authorization': f'Bearer {self.access_token}',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Referer': 'https://sinapse.ons.org.br/',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
-        }
+    # Obter a data de início e fim para o ano atual
+    data_inicio = f"{ano}-01-01T00:00:00.000Z"
+    data_fim = f"{ano}-12-31T23:59:59.000Z"
 
-        cookies = self.session.cookies.get_dict()
+    # Corpo da solicitação
+    body = {
+        "dataInicio": data_inicio,
+        "dataFim": data_fim,
+        "apenasAgentesFavoritos": False,
+        "tipoRelatorio": tipo_relatorio_id,
+        "periodoBase": None,
+        "idsFontes": [],
+        "idsAgentes": [],
+        "idsUsinas": [],
+        "idsConjuntos": [conjunto_id]
+    }
 
-        payload = {
-            "origem": None,
-            "destino": None,
-            "status": None,
-            #"periodoInicial": data_inicial,
-            #"periodoFinal": data_final,
-            "periodoInicial": "2025-02-01T00:00:00.000Z",
-            "periodoFinal": "2025-02-23T23:59:59.000Z",
-            "mensagem": ""
-        }
-        #print(payload)
-        # Inclua também o cabeçalho 'perfil-selecionado' conforme o exemplo (ajuste se necessário)
-        headers.update({
-                'perfil-selecionado': 'Apurador%20Agente%2FAGENTES%2F189%2FVOLTALIA'
-            })
-
-        print(f"Baixando {nome}...")
-
-        response = self.session.post(url, json=payload, headers=headers, cookies=cookies, stream=True)
+    try:
+        # Faz a requisição ao servidor
+        response = requests.post(exportar_url, headers=headers, json=body)
 
         if response.status_code == 200:
-            temp_path = os.path.join(os.getcwd(), f"temp_{nome}.csv")
-
-            with open(temp_path, "wb") as file:
-                for chunk in response.iter_content(chunk_size=1024):
-                    file.write(chunk)
-
-            df = pd.read_csv(temp_path, delimiter=";", encoding="utf-8")
-
-            os.remove(temp_path)  # Remove o arquivo temporário após processamento
-
-            # Filtrar e salvar cada subestação separadamente
-            for chave, valor in SE_TAG_MAP.items():
-                df_filtrado = df[df["Mensagem"].str.contains(chave, na=False, case=False)]
+            # Verifica se há conteúdo na resposta
+            if len(response.content) > 0:
+                # Nome do relatório com base no tipo, nome do conjunto e ano
+                relatorio_tipo = "RelatorioGeral" if tipo_relatorio_id == 1 else "RelatorioGeracaoReferencia"
+                numero = numero_serie[conjunto_id]
+                filename = f"{relatorio_tipo}_{numero}_{conjunto_nome.replace(' ', '_')}_{ano}.xlsx"
                 
-                if not df_filtrado.empty:
-                    pasta_destino = self.criar_pasta_relatorio(valor, tipo_relatorio)
-                    file_destino = os.path.join(pasta_destino, f"{ano_atual}_{valor}_{tipo_relatorio}_{data_arquivo}.csv")
-
-                    df_filtrado.to_csv(file_destino, index=False, sep=";", encoding="utf-8-sig")
-                    print(f"📂 Dados da subestação '{chave}' salvos em: {file_destino}")
-
+                # Caminho completo para salvar o arquivo
+                file_path = os.path.join(output_dir, filename)
+                
+                # Salva o relatório no arquivo
+                with open(file_path, "wb") as file:
+                    file.write(response.content)
+                print(f"Relatório de {ano} baixado com sucesso! Salvo em: {file_path}")
+            else:
+                print(f"Sem dados disponíveis para {conjunto_nome} em {ano}.")
         else:
-            print(f"❌ Erro ao baixar '{nome}': {response.status_code} - {response.text}")
+            print(f"Erro ao baixar o relatório de {ano} para {conjunto_nome}: {response.status_code} - {response.text}.")
 
-    def baixar_relatorios(self):
-        """Baixa os relatórios analítico e simplificado."""
-        urls = {
-            "analitico": "https://api.sinapse.ons.org.br/api/solicitacao/pesquisa/exportar-analitico",
-            "simplificado": "https://api.sinapse.ons.org.br/api/solicitacao/pesquisa/exportar"
-        }
+    except RequestException as e:
+        # Em caso de erro, exibe a mensagem e passa para o próximo conjunto/ano
+        print(f"Erro de requisição ao tentar baixar o relatório de {ano} para {conjunto_nome}: {str(e)}.")
 
-        self.baixar_csv(urls["analitico"], "Relatório Analítico", "HC")
-        self.baixar_csv(urls["simplificado"], "Relatório Simplificado", "HS")
+# Função para processar uma usina por vez
+def processar_usina(conjunto_id):
+    # Obter o token de autenticação da API
+    token = get_api_token()
+    
+    if token:
+        conjunto_nome = idsConjuntos[conjunto_id]
+        relatorio_geral_dir, relatorio_geracao_referencia_dir = criar_pastas_base()
+        
+        for tipo_relatorio_id, tipo_relatorio_nome in tipoRelatorio.items():
+            # Determinar a pasta de saída
+            output_dir = relatorio_geral_dir if tipo_relatorio_id == 1 else relatorio_geracao_referencia_dir
 
-# Criar a instância e executar o processo
+            # Iterar sobre os anos e baixar os relatórios anuais
+            ano_inicial = 2024  # Defina o primeiro ano disponível
+            ano_atual = datetime.now().year
+            for ano in range(ano_inicial, ano_atual + 1):
+                # Baixar o relatório e salvá-lo na pasta determinada
+                baixar_relatorio(token, tipo_relatorio_id, conjunto_id, conjunto_nome, output_dir, ano)
+
+# Função para mesclar os dados das planilhas anuais em uma única planilha
+def mesclar_planilhas(conjunto_id):
+    conjunto_nome = idsConjuntos[conjunto_id]
+    numero = numero_serie[conjunto_id]
+    
+    # Diretório onde estão os relatórios gerais e os de geração de referência das usinas
+    caminho_planilhas_gerais = os.path.join(caminho, f"{datetime.now().year}_SAGER", "Relatório Geral")
+    caminho_planilhas_referencia = os.path.join(caminho, f"{datetime.now().year}_SAGER", "Relatório Geração de Referência")
+    
+    caminho_planilha_geral = os.path.join(caminho_planilhas_gerais, f"RelatorioGeral_{numero}_{conjunto_nome.replace(' ', '_')}.xlsx")
+    
+    workbook_geral = openpyxl.Workbook()
+    
+    # Criação das abas na planilha geral
+    aba_patamares_geral = workbook_geral.create_sheet("Patamares")
+    aba_restricoes_geral = workbook_geral.create_sheet("Restrições")
+    aba_referencia_geral = workbook_geral.create_sheet("Geração Referência")
+    
+    # Variáveis de controle para manter o cabeçalho da primeira planilha
+    cabecalho_patamares = True
+    cabecalho_restricoes = True
+    cabecalho_referencia = True
+
+    # Mescla os dados de todas as planilhas anuais disponíveis
+    for ano in range(2025, datetime.now().year + 1):   #Escolha 
+        # Mesclando as planilhas gerais
+        filename_geral = f"RelatorioGeral_{numero}_{conjunto_nome.replace(' ', '_')}_{ano}.xlsx"
+        file_path_geral = os.path.join(caminho_planilhas_gerais, filename_geral)
+        
+        if os.path.exists(file_path_geral):
+            workbook = openpyxl.load_workbook(file_path_geral, data_only=True)
+            
+            # Copiando dados da aba 'Patamares' a partir da linha 11
+            if 'Patamares' in workbook.sheetnames:
+                aba_patamares = workbook['Patamares']
+                if cabecalho_patamares:
+                    # Copiar o cabeçalho da primeira planilha
+                    for row in aba_patamares.iter_rows(min_row=1, max_row=10, values_only=True):
+                        aba_patamares_geral.append(row)
+                    cabecalho_patamares = False  # Cabeçalho já copiado, não copiar novamente
+                # Copiar dados abaixo do cabeçalho
+                for row in aba_patamares.iter_rows(min_row=11, values_only=True):
+                    aba_patamares_geral.append(row)
+            
+            # Copiando dados da aba 'Restrições'
+            if 'Restrições' in workbook.sheetnames:
+                aba_restricoes = workbook['Restrições']
+                if cabecalho_restricoes:
+                    # Copiar o cabeçalho completo da primeira planilha
+                    for row in aba_restricoes.iter_rows(min_row=1, max_row=9, values_only=True):
+                        aba_restricoes_geral.append(row)
+                    cabecalho_restricoes = False  # Cabeçalho já copiado
+                # Copiar dados abaixo do cabeçalho a partir da linha 10
+                for row in aba_restricoes.iter_rows(min_row=10, values_only=True):
+                    if any(cell is not None for cell in row):  # Verificar se a linha não está vazia
+                        aba_restricoes_geral.append(row)
+        
+        # Mesclando as planilhas de referência
+        filename_referencia = f"RelatorioGeracaoReferencia_{numero}_{conjunto_nome.replace(' ', '_')}_{ano}.xlsx"
+        file_path_referencia = os.path.join(caminho_planilhas_referencia, filename_referencia)
+        
+        if os.path.exists(file_path_referencia):
+            workbook_referencia = openpyxl.load_workbook(file_path_referencia, data_only=True)
+            
+            # Copiando dados da aba 'Geração Referência' a partir da linha 10
+            if 'Geração Referência' in workbook_referencia.sheetnames:
+                aba_referencia = workbook_referencia['Geração Referência']
+                if cabecalho_referencia:
+                    # Copiar o cabeçalho da primeira planilha
+                    for row in aba_referencia.iter_rows(min_row=1, max_row=9, values_only=True):
+                        aba_referencia_geral.append(row)
+                    cabecalho_referencia = False  # Cabeçalho já copiado
+                # Copiar dados abaixo do cabeçalho
+                for row in aba_referencia.iter_rows(min_row=10, values_only=True):
+                    if any(cell is not None for cell in row):  # Verificar se a linha não está vazia
+                        aba_referencia_geral.append(row)
+
+    # Remover a aba padrão criada pelo openpyxl se não tiver sido usada
+    if 'Sheet' in workbook_geral.sheetnames:
+        del workbook_geral['Sheet']
+    
+    # Salva a nova planilha geral com os dados mesclados
+    workbook_geral.save(caminho_planilha_geral)
+    print(f"Planilha geral criada com sucesso: {caminho_planilha_geral}")
+
+# Execução principal
 if __name__ == "__main__":
-    ons = SinapseONS()
-    if ons.autenticar():
-        ons.baixar_relatorios()
+    for conjunto_id in idsConjuntos.keys():
+        # Baixar os relatórios
+        processar_usina(conjunto_id)
+        
+        # Mesclar os relatórios baixados
+        mesclar_planilhas(conjunto_id)
