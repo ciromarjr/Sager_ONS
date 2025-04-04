@@ -35,7 +35,7 @@ Pandas (para manipulação de dados)
 
 Dotenv (para gerenciar variáveis de ambiente)
 
-📌 Requisitos
+## 📌 Requisitos
 Antes de rodar o projeto, instale as dependências:
 
  ```ini
